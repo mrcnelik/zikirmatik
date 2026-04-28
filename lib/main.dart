@@ -295,7 +295,6 @@ class _ZikirListePageState extends State<ZikirListePage> {
 
     showDialog(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,

@@ -1063,7 +1063,7 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
               width: double.infinity,
               constraints: const BoxConstraints(
                 minHeight: 70,
-                maxHeight: 200, // uzatıldı
+                maxHeight: 360, // uzatıldı
               ),
               padding: const EdgeInsets.symmetric(
                   horizontal: 16, vertical: 10),

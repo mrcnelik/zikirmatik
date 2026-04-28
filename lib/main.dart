@@ -282,91 +282,136 @@ class _ZikirListePageState extends State<ZikirListePage> {
   }
 
   void _zikirFormDialog({
-    required String baslik,
-    Zikir? mevcutZikir,
-    required void Function(Zikir) onKaydet,
-  }) {
-    final isimCtrl = TextEditingController(text: mevcutZikir?.isim ?? '');
-    final arapcaCtrl = TextEditingController(text: mevcutZikir?.arapca ?? '');
-    final okunusCtrl = TextEditingController(text: mevcutZikir?.okunusu ?? '');
-    final anlamCtrl = TextEditingController(text: mevcutZikir?.anlami ?? '');
-    final hedefCtrl = TextEditingController(
-        text: mevcutZikir != null ? '${mevcutZikir.hedef}' : '33');
+  required String baslik,
+  Zikir? mevcutZikir,
+  required void Function(Zikir) onKaydet,
+}) {
+  final isimCtrl = TextEditingController(text: mevcutZikir?.isim ?? '');
+  final arapcaCtrl = TextEditingController(text: mevcutZikir?.arapca ?? '');
+  final okunusCtrl = TextEditingController(text: mevcutZikir?.okunusu ?? '');
+  final anlamCtrl = TextEditingController(text: mevcutZikir?.anlami ?? '');
+  final hedefCtrl = TextEditingController(
+      text: mevcutZikir != null ? '${mevcutZikir.hedef}' : '33');
 
-    showDialog(
-      context: context,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,          // ✅ klavye için gerekli
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(ctx).viewInsets.bottom, // klavye boşluğu
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF2A2A2A),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(baslik,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildField('Zikir Adı *', isimCtrl),
-                const SizedBox(height: 12),
-                _buildField('Arapça (opsiyonel)', arapcaCtrl,
-                    textDir: TextDirection.rtl),
-                const SizedBox(height: 12),
-                // Okunuş alanı — daha az satır, scroll edilebilir
-                _buildField('Okunuşu *', okunusCtrl, maxLines: 4),
-                const SizedBox(height: 12),
-                _buildField('Anlamı (opsiyonel)', anlamCtrl, maxLines: 3),
-                const SizedBox(height: 12),
-                _buildField('Hedef Sayı *', hedefCtrl,
-                    keyboardType: TextInputType.number),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child:
-                  const Text('İptal', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4FC3F7),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () {
-                if (isimCtrl.text.trim().isEmpty ||
-                    okunusCtrl.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Zikir adı ve okunuşu zorunludur!'),
-                      backgroundColor: Colors.redAccent,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Başlık + kapat butonu
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    baslik,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                  );
-                  return;
-                }
-                final hedef = int.tryParse(hedefCtrl.text) ?? 33;
-                onKaydet(Zikir(
-                  isim: isimCtrl.text.trim(),
-                  arapca: arapcaCtrl.text.trim(),
-                  okunusu: okunusCtrl.text.trim(),
-                  anlami: anlamCtrl.text.trim(),
-                  hedef: hedef,
-                  ozel: true,
-                ));
-                Navigator.pop(ctx);
-              },
-              child: const Text('Kaydet',
-                  style: TextStyle(color: Colors.white)),
-            ),
-          ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Divider(color: Color(0xFF3A3A3A)),
+              const SizedBox(height: 12),
+
+              _buildField('Zikir Adı *', isimCtrl),
+              const SizedBox(height: 12),
+              _buildField('Arapça (opsiyonel)', arapcaCtrl,
+                  textDir: TextDirection.rtl),
+              const SizedBox(height: 12),
+              _buildField('Okunuşu *', okunusCtrl, maxLines: 4),
+              const SizedBox(height: 12),
+              _buildField('Anlamı (opsiyonel)', anlamCtrl, maxLines: 3),
+              const SizedBox(height: 12),
+              _buildField('Hedef Sayı *', hedefCtrl,
+                  keyboardType: TextInputType.number),
+              const SizedBox(height: 20),
+
+              // Butonlar
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF3A3A3A)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('İptal',
+                          style: TextStyle(color: Colors.grey)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4FC3F7),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        if (isimCtrl.text.trim().isEmpty ||
+                            okunusCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content:
+                                  Text('Zikir adı ve okunuşu zorunludur!'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                          return;
+                        }
+                        final hedef = int.tryParse(hedefCtrl.text) ?? 33;
+                        onKaydet(Zikir(
+                          isim: isimCtrl.text.trim(),
+                          arapca: arapcaCtrl.text.trim(),
+                          okunusu: okunusCtrl.text.trim(),
+                          anlami: anlamCtrl.text.trim(),
+                          hedef: hedef,
+                          ozel: true,
+                        ));
+                        Navigator.pop(ctx);
+                      },
+                      child: const Text(
+                        'Kaydet',
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildField(
     String label,

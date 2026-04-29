@@ -111,12 +111,12 @@ List<Zikir> _varsayilanZikirler() => [
 
 class ZikirStorage {
   static const _key = 'zikirler_v1';
+  static const _sayacPrefix = 'sayac_';
 
   static Future<List<Zikir>> yukle() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString(_key);
     if (jsonStr == null) {
-      // İlk açılış → varsayılanları kaydet ve döndür
       final varsayilan = _varsayilanZikirler();
       await kaydet(varsayilan);
       return varsayilan;
@@ -129,6 +129,21 @@ class ZikirStorage {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
         _key, jsonEncode(zikirler.map((z) => z.toJson()).toList()));
+  }
+
+  static Future<void> sayacKaydet(String zikirId, int deger) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('$_sayacPrefix$zikirId', deger);
+  }
+
+  static Future<int> sayacYukle(String zikirId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('$_sayacPrefix$zikirId') ?? 0;
+  }
+
+  static Future<void> sayacSifirla(String zikirId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('$_sayacPrefix$zikirId');
   }
 }
 
@@ -160,9 +175,7 @@ class _ZikirListePageState extends State<ZikirListePage> {
     });
   }
 
-  Future<void> _kaydet() async {
-    await ZikirStorage.kaydet(_zikirler);
-  }
+  Future<void> _kaydet() async => ZikirStorage.kaydet(_zikirler);
 
   void _ekle(Zikir z) {
     setState(() => _zikirler.add(z));
@@ -171,6 +184,7 @@ class _ZikirListePageState extends State<ZikirListePage> {
 
   void _sil(Zikir z) {
     setState(() => _zikirler.removeWhere((e) => e.id == z.id));
+    ZikirStorage.sayacSifirla(z.id); // sayacı da temizle
     _kaydet();
   }
 
@@ -189,8 +203,6 @@ class _ZikirListePageState extends State<ZikirListePage> {
     });
   }
 
-  // ── Form (BottomSheet) ─────────────────────────────────────────────────────
-
   void _zikirFormDialog({
     required String baslik,
     Zikir? mevcutZikir,
@@ -208,8 +220,7 @@ class _ZikirListePageState extends State<ZikirListePage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
           decoration: const BoxDecoration(
             color: Color(0xFF2A2A2A),
@@ -361,8 +372,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
         backgroundColor: const Color(0xFF2A2A2A),
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title:
-            const Text('Zikiri Sil', style: TextStyle(color: Colors.white)),
+        title: const Text('Zikiri Sil',
+            style: TextStyle(color: Colors.white)),
         content: Text('"${zikir.isim}" zikrini silmek istiyor musunuz?',
             style: const TextStyle(color: Colors.grey)),
         actions: [
@@ -388,8 +399,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
           backgroundColor: const Color(0xFF2A2A2A),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.settings, color: Color(0xFF4FC3F7)),
@@ -408,7 +419,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
                     Icon(Icons.vibration, color: Colors.white70),
                     SizedBox(width: 10),
                     Text('Titreşim',
-                        style: TextStyle(color: Colors.white, fontSize: 16)),
+                        style:
+                            TextStyle(color: Colors.white, fontSize: 16)),
                   ]),
                   Switch(
                     value: _titresim,
@@ -438,7 +450,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
                   const Icon(Icons.text_fields, color: Colors.white70),
                   const SizedBox(width: 10),
                   const Text('Yazı Boyutu',
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
+                      style:
+                          TextStyle(color: Colors.white, fontSize: 16)),
                   const Spacer(),
                   Text(AppSettings.yaziBoyutu.toStringAsFixed(0),
                       style: const TextStyle(
@@ -464,14 +477,15 @@ class _ZikirListePageState extends State<ZikirListePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Text('Küçük',
-                      style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 11)),
                   Text('Büyük',
-                      style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 11)),
                 ],
               ),
               const SizedBox(height: 16),
               const Divider(color: Color(0xFF3A3A3A)),
-              // Varsayılanlara sıfırla
               TextButton.icon(
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -493,7 +507,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
                         TextButton(
                           onPressed: () => Navigator.pop(c, true),
                           child: const Text('Sıfırla',
-                              style: TextStyle(color: Colors.redAccent)),
+                              style:
+                                  TextStyle(color: Colors.redAccent)),
                         ),
                       ],
                     ),
@@ -504,7 +519,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
                     setState(() => _zikirler = varsayilan);
                   }
                 },
-                icon: const Icon(Icons.restore, color: Colors.orangeAccent),
+                icon:
+                    const Icon(Icons.restore, color: Colors.orangeAccent),
                 label: const Text('Varsayılanlara Sıfırla',
                     style: TextStyle(color: Colors.orangeAccent)),
               ),
@@ -552,7 +568,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
       ),
       body: _yukleniyor
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4FC3F7)))
+              child:
+                  CircularProgressIndicator(color: Color(0xFF4FC3F7)))
           : Column(
               children: [
                 Container(
@@ -592,18 +609,22 @@ class _ZikirListePageState extends State<ZikirListePage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
                     itemCount: _zikirler.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final zikir = _zikirler[index];
                       return _ZikirKart(
                         zikir: zikir,
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  ZikirSayacPage(zikir: zikir)),
-                        ),
-                        // Artık HER zikir düzenlenip silinebilir
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    ZikirSayacPage(zikir: zikir)),
+                          );
+                          // Geri dönünce listeyi yenile (sayaç göstergesi için)
+                          setState(() {});
+                        },
                         onDuzenle: () => _zikirFormDialog(
                           baslik: 'Zikiri Düzenle',
                           mevcutZikir: zikir,
@@ -624,8 +645,8 @@ class _ZikirListePageState extends State<ZikirListePage> {
         backgroundColor: const Color(0xFF4FC3F7),
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Özel Zikir',
-            style:
-                TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -662,7 +683,8 @@ class _ZikirKart extends StatelessWidget {
                   ? const Color(0xFF2E5E2E)
                   : const Color(0xFF3A3A3A)),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
             Container(
@@ -710,15 +732,16 @@ class _ZikirKart extends StatelessWidget {
                           ),
                           child: const Text('Özel',
                               style: TextStyle(
-                                  color: Colors.greenAccent, fontSize: 10)),
+                                  color: Colors.greenAccent,
+                                  fontSize: 10)),
                         ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 3),
                   Text('Hedef: ${zikir.hedef}',
-                      style:
-                          TextStyle(color: Colors.grey[500], fontSize: 12)),
+                      style: TextStyle(
+                          color: Colors.grey[500], fontSize: 12)),
                 ],
               ),
             ),
@@ -732,11 +755,10 @@ class _ZikirKart extends StatelessWidget {
                     overflow: TextOverflow.ellipsis),
               ),
             const SizedBox(width: 8),
-            // Düzenle & Sil — artık her zikir için gösterilir
             GestureDetector(
               onTap: onDuzenle,
-              child:
-                  const Icon(Icons.edit, color: Colors.white54, size: 20),
+              child: const Icon(Icons.edit,
+                  color: Colors.white54, size: 20),
             ),
             const SizedBox(width: 8),
             GestureDetector(
@@ -764,6 +786,7 @@ class ZikirSayacPage extends StatefulWidget {
 class _ZikirSayacPageState extends State<ZikirSayacPage>
     with SingleTickerProviderStateMixin {
   int _sayac = 0;
+  bool _yukleniyor = true;
   int _tabIndex = 1;
   late AnimationController _animCtrl;
   late Animation<double> _scaleAnim;
@@ -775,6 +798,15 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
         vsync: this, duration: const Duration(milliseconds: 100));
     _scaleAnim = Tween<double>(begin: 1.0, end: 0.92).animate(
         CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut));
+    _sayacYukle();
+  }
+
+  Future<void> _sayacYukle() async {
+    final deger = await ZikirStorage.sayacYukle(widget.zikir.id);
+    setState(() {
+      _sayac = deger;
+      _yukleniyor = false;
+    });
   }
 
   @override
@@ -787,6 +819,7 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
     if (AppSettings.titresimAcik) HapticFeedback.mediumImpact();
     _animCtrl.forward().then((_) => _animCtrl.reverse());
     setState(() => _sayac++);
+    ZikirStorage.sayacKaydet(widget.zikir.id, _sayac);
     if (_sayac == widget.zikir.hedef) _hedefDialog();
   }
 
@@ -794,6 +827,7 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
     if (_sayac > 0) {
       if (AppSettings.titresimAcik) HapticFeedback.selectionClick();
       setState(() => _sayac--);
+      ZikirStorage.sayacKaydet(widget.zikir.id, _sayac);
     }
   }
 
@@ -802,10 +836,10 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title:
-            const Text('Sıfırla', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Sıfırla',
+            style: TextStyle(color: Colors.white)),
         content: const Text('Sayacı sıfırlamak istiyor musunuz?',
             style: TextStyle(color: Colors.grey)),
         actions: [
@@ -815,6 +849,7 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
           TextButton(
             onPressed: () {
               setState(() => _sayac = 0);
+              ZikirStorage.sayacSifirla(widget.zikir.id); // kalıcı sıfırla
               Navigator.pop(ctx);
             },
             child: const Text('Sıfırla',
@@ -831,8 +866,8 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: const Text('🎉 Tebrikler!',
             style: TextStyle(color: Colors.white),
             textAlign: TextAlign.center),
@@ -859,10 +894,10 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF2A2A2A),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title:
-            const Text('Sayı Gir', style: TextStyle(color: Colors.white)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
+        title: const Text('Sayı Gir',
+            style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: ctrl,
           keyboardType: TextInputType.number,
@@ -879,12 +914,15 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child:
-                  const Text('İptal', style: TextStyle(color: Colors.grey))),
+              child: const Text('İptal',
+                  style: TextStyle(color: Colors.grey))),
           TextButton(
             onPressed: () {
               final v = int.tryParse(ctrl.text);
-              if (v != null && v >= 0) setState(() => _sayac = v);
+              if (v != null && v >= 0) {
+                setState(() => _sayac = v);
+                ZikirStorage.sayacKaydet(widget.zikir.id, v); // kaydet
+              }
               Navigator.pop(ctx);
             },
             child: const Text('Tamam',
@@ -907,7 +945,8 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
             children: [
               Icon(Icons.text_fields, color: Color(0xFF4FC3F7)),
               SizedBox(width: 10),
-              Text('Yazı Boyutu', style: TextStyle(color: Colors.white)),
+              Text('Yazı Boyutu',
+                  style: TextStyle(color: Colors.white)),
             ],
           ),
           content: Column(
@@ -962,9 +1001,11 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Text('10 — Küçük',
-                      style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 11)),
                   Text('26 — Büyük',
-                      style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey, fontSize: 11)),
                 ],
               ),
             ],
@@ -1036,233 +1077,251 @@ class _ZikirSayacPageState extends State<ZikirSayacPage>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // ── Sekme ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF3A3A3A)),
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Row(
-                children: ['Arapça', 'Okunuşu', 'Anlamı']
-                    .asMap()
-                    .entries
-                    .map((e) => Expanded(
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _tabIndex = e.key),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
-                                color: _tabIndex == e.key
-                                    ? const Color(0xFF4FC3F7)
-                                        .withOpacity(0.2)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(30),
-                                border: _tabIndex == e.key
-                                    ? Border.all(
-                                        color: const Color(0xFF4FC3F7))
-                                    : null,
-                              ),
-                              child: Text(
-                                e.value,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: _tabIndex == e.key
-                                      ? const Color(0xFF4FC3F7)
-                                      : Colors.grey,
-                                  fontWeight: _tabIndex == e.key
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  fontSize: 13,
+      body: _yukleniyor
+          ? const Center(
+              child:
+                  CircularProgressIndicator(color: Color(0xFF4FC3F7)))
+          : Column(
+              children: [
+                // ── Sekme ──────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 6),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border:
+                          Border.all(color: const Color(0xFF3A3A3A)),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: ['Arapça', 'Okunuşu', 'Anlamı']
+                          .asMap()
+                          .entries
+                          .map((e) => Expanded(
+                                child: GestureDetector(
+                                  onTap: () => setState(
+                                      () => _tabIndex = e.key),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(
+                                        milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: _tabIndex == e.key
+                                          ? const Color(0xFF4FC3F7)
+                                              .withOpacity(0.2)
+                                          : Colors.transparent,
+                                      borderRadius:
+                                          BorderRadius.circular(30),
+                                      border: _tabIndex == e.key
+                                          ? Border.all(
+                                              color: const Color(
+                                                  0xFF4FC3F7))
+                                          : null,
+                                    ),
+                                    child: Text(
+                                      e.value,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: _tabIndex == e.key
+                                            ? const Color(0xFF4FC3F7)
+                                            : Colors.grey,
+                                        fontWeight: _tabIndex == e.key
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ),
+
+                // ── İçerik kutusu ──────────────────────────────────────
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(
+                        minHeight: 70, maxHeight: 200),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF252525),
+                      borderRadius: BorderRadius.circular(16),
+                      border:
+                          Border.all(color: const Color(0xFF3A3A3A)),
+                    ),
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          _icerik,
+                          textAlign: TextAlign.center,
+                          textDirection: _tabIndex == 0
+                              ? TextDirection.rtl
+                              : TextDirection.ltr,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: _tabIndex == 0
+                                ? AppSettings.yaziBoyutu + 4
+                                : AppSettings.yaziBoyutu,
+                            height: 1.35,
                           ),
-                        ))
-                    .toList(),
-              ),
-            ),
-          ),
-
-          // ── İçerik kutusu ──────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              width: double.infinity,
-              constraints:
-                  const BoxConstraints(minHeight: 70, maxHeight: 360),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF252525),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF3A3A3A)),
-              ),
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  child: Text(
-                    _icerik,
-                    textAlign: TextAlign.center,
-                    textDirection: _tabIndex == 0
-                        ? TextDirection.rtl
-                        : TextDirection.ltr,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: _tabIndex == 0
-                          ? AppSettings.yaziBoyutu + 4
-                          : AppSettings.yaziBoyutu,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // ── Yazı boyutu kısayolu ───────────────────────────────
-          GestureDetector(
-            onTap: _yaziBoyutuDialog,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.text_fields,
-                    color: Color(0xFF4FC3F7), size: 13),
-                const SizedBox(width: 4),
-                Text(
-                  'Yazı: ${AppSettings.yaziBoyutu.toStringAsFixed(0)}px  (değiştir)',
-                  style: const TextStyle(
-                      color: Color(0xFF4FC3F7), fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-
-          const Spacer(),
-
-          // ── Titreşim göstergesi ────────────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                AppSettings.titresimAcik
-                    ? Icons.vibration
-                    : Icons.phonelink_erase,
-                color: AppSettings.titresimAcik
-                    ? const Color(0xFF4FC3F7)
-                    : Colors.grey[700],
-                size: 13,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                AppSettings.titresimAcik
-                    ? 'Titreşim Açık'
-                    : 'Titreşim Kapalı',
-                style: TextStyle(
-                  color: AppSettings.titresimAcik
-                      ? const Color(0xFF4FC3F7)
-                      : Colors.grey[700],
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          // ── Hedef & progress ──────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Column(
-              children: [
-                Text(
-                  'Hedef Sayı: ${widget.zikir.hedef}',
-                  style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: _ilerleme,
-                    backgroundColor: const Color(0xFF3A3A3A),
-                    color: _ilerleme >= 1.0
-                        ? Colors.greenAccent
-                        : const Color(0xFF4FC3F7),
-                    minHeight: 7,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text('%${(_ilerleme * 100).toStringAsFixed(1)}',
-                    style: TextStyle(
-                        color: Colors.grey[600], fontSize: 11)),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Artır butonu — sayaç içinde ───────────────────────
-          GestureDetector(
-            onTap: _artir,
-            child: ScaleTransition(
-              scale: _scaleAnim,
-              child: Container(
-                width: 160,
-                height: 160,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4FC3F7), Color(0xFF0288D1)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4FC3F7).withOpacity(0.4),
-                      blurRadius: 28,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.add, color: Colors.white, size: 30),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$_sayac',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -1,
+                        ),
                       ),
                     ),
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                // ── Yazı boyutu kısayolu ───────────────────────────────
+                GestureDetector(
+                  onTap: _yaziBoyutuDialog,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.text_fields,
+                          color: Color(0xFF4FC3F7), size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Yazı: ${AppSettings.yaziBoyutu.toStringAsFixed(0)}px  (değiştir)',
+                        style: const TextStyle(
+                            color: Color(0xFF4FC3F7), fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Spacer(),
+
+                // ── Titreşim göstergesi ────────────────────────────────
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      AppSettings.titresimAcik
+                          ? Icons.vibration
+                          : Icons.phonelink_erase,
+                      color: AppSettings.titresimAcik
+                          ? const Color(0xFF4FC3F7)
+                          : Colors.grey[700],
+                      size: 13,
+                    ),
+                    const SizedBox(width: 5),
                     Text(
-                      '/ ${widget.zikir.hedef}',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 13),
+                      AppSettings.titresimAcik
+                          ? 'Titreşim Açık'
+                          : 'Titreşim Kapalı',
+                      style: TextStyle(
+                        color: AppSettings.titresimAcik
+                            ? const Color(0xFF4FC3F7)
+                            : Colors.grey[700],
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
 
-          const SizedBox(height: 40),
-        ],
-      ),
+                const SizedBox(height: 6),
+
+                // ── Hedef & progress ──────────────────────────────────
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Hedef Sayı: ${widget.zikir.hedef}',
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: _ilerleme,
+                          backgroundColor: const Color(0xFF3A3A3A),
+                          color: _ilerleme >= 1.0
+                              ? Colors.greenAccent
+                              : const Color(0xFF4FC3F7),
+                          minHeight: 7,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                          '%${(_ilerleme * 100).toStringAsFixed(1)}',
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 11)),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // ── Artır butonu — sayaç içinde ───────────────────────
+                GestureDetector(
+                  onTap: _artir,
+                  child: ScaleTransition(
+                    scale: _scaleAnim,
+                    child: Container(
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF4FC3F7),
+                            Color(0xFF0288D1)
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF4FC3F7)
+                                .withOpacity(0.4),
+                            blurRadius: 28,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.add,
+                              color: Colors.white, size: 30),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$_sayac',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 42,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          Text(
+                            '/ ${widget.zikir.hedef}',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+              ],
+            ),
     );
   }
 }
